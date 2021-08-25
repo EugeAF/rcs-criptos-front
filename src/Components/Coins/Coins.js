@@ -4,7 +4,8 @@ import "../Coins/Coins.css";
 function Coins() {
     const [data, setDatas] = useState([]);
     const [fetchFlag, setFetchFlag] = useState('');
-    const [index, setIndex] = useState(null)
+    const [index, setIndex] = useState(null);
+    const [err, setErr] = useState('');
 
     /*READ*/
     useEffect(() => {
@@ -30,6 +31,10 @@ function Coins() {
     };
 
     const add = () => {
+        if (coins.name === "" || coins.value === "" || coins.rateUSD === "" || isNaN(coins.value) || isNaN(coins.value)){
+            alert("Complete todos los campos");
+            return;
+        }
         fetch('http://localhost:3003/coins', {
             headers: {
                 'Accept': 'application/json',
@@ -38,17 +43,17 @@ function Coins() {
             method: 'POST',
             body: JSON.stringify(coins)
         })
-            .then(response => response.json())
-            .then(hola => {
-                console.log("GUARDADO", hola)
-                setDatas([...data, hola]);
-                setCoins({
-                    name: '',
-                    value: '',
-                    rateUSD: '',
-                    notas: ''
-                });
+        .then(response => response.json())
+        .then(hola => {
+            console.log("GUARDADO", hola)
+            setDatas([...data, hola]);
+            setCoins({
+                name: '',
+                value: '',
+                rateUSD: '',
+                notas: ''
             });
+        })
     };
 
 
@@ -91,13 +96,21 @@ function Coins() {
     const actualizar = (index) => {
         const name = data[index].name.toLowerCase();
         fetch(`https://api.coincap.io/v2/assets/${name}`)
-            .then(response => response.json())
+            .then(response => {
+                console.log("RESPONSE ", response);
+                if(response.status == 404){
+                    setErr(`${name} no se encuentra`);
+                }else{
+                    return response.json()
+                }
+            })
             .then(hola => {
                 setBitcoin(hola);
                 intentos = 0;
             })
             .then(setIndex(index))
             .catch((error) => {
+                console.log("PRIMER ERROR", error);
                 actualizar(index);
                 intentos++;
                 console.log("Intentos ", intentos);
@@ -121,7 +134,6 @@ function Coins() {
             body: JSON.stringify(bitcoin)
         })
             .then(response => {
-                console.log("Ejecutado", response)
                 setFetchFlag(response.json())
             });
         }
@@ -148,16 +160,16 @@ function Coins() {
                     <a className="btn btn-primary w-25 mt-3 mb-5" onClick={add}>Add</a>
                 </form>
             </div>
-
+            {err && <h2>{err}</h2>}
             <div className="row justify-content-center align-items-center">
-                {data.map((item, index) => (
+                {data.length ? data.map((item, index) => (
                     <div key={index} className="col-sm-12 col-md-6 col-lg-4 mt-3 align-items-center align-items-center">
                         <div className="card text-center">
                             <div className="card-body">
                                 <h5 className="card-title">Nombre: {item.name}</h5>
+                                <p className="card-text">Value: {parseFloat(item.value).toFixed(2)}</p>
+                                <p className="card-text">RateUSD: $ {parseFloat(item.rateUSD).toFixed(2)}</p>
                                 <p className="card-text">Notas: {item.notas}</p>
-                                <p className="card-text">Value: {item.value}</p>
-                                <p className="card-text">RateUSD:  {item.rateUSD}</p>
                                 <button className="btn btn-danger ms-3" onClick={() => eliminar(index)}>Eliminar</button>
                                 <button className="btn btn-secondary" onClick={() => editar(index)}>Editar</button>
                                 <button className="btn btn-secondary" onClick={() => actualizar(index)}>Actualizar</button>
@@ -167,7 +179,11 @@ function Coins() {
                             </div>
                         </div>
                     </div>
-                ))}
+                )) : 
+                    <div>
+                        <h2>Usted no tiene ninguna cripto aun</h2>
+                    </div>
+                }
             </div>
         </div>
     )
